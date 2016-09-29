@@ -8,15 +8,18 @@
 
 // Transmitter is connected to Arduino Pin #4
 #define PIN 4
+#define MQTT_KEEPALIVE 45
 
 const char* ssid = "*******";
 const char* password = "********";
+// const char* host = "esp8266PowerSwitchLR";
 const char* host = "esp8266PowerSwitch";
+char clientId[32];
 
 RCSwitch mySwitch = RCSwitch();
 WiFiClient wclient;
 // Server running MQTT
-IPAddress MQTTserver(192, 168, 11, 22);
+IPAddress MQTTserver(192, 168, 11, 21);
 PubSubClient client(MQTTserver, 1883, wclient);
 
 void callback (char* topic, byte* payload, uint8_t length) {
@@ -27,9 +30,6 @@ void callback (char* topic, byte* payload, uint8_t length) {
   strncpy(myPayload, (char *) payload, length);
   myPayload[length] = '\0';
   Serial.print(topic);
-  // Serial.print(" (");
-  // Serial.print(length);
-  // Serial.print(") => ");
   Serial.print(" => ");
   Serial.println(myPayload);
 
@@ -70,7 +70,7 @@ void callback (char* topic, byte* payload, uint8_t length) {
       Serial.println("PowerSwitch1D on");
     }
     else {
-      mySwitch.switchOff("00001", "00001");
+      mySwitch.switchOff("00001", "00010");
       Serial.println("PowerSwitch1D off");
     }
   }
@@ -123,6 +123,8 @@ void setup() {
    */
   Serial.begin(76800);
   Serial.println("Booting");
+  sprintf(clientId, "ESP8266PowerSwitch-%04x", String(random(0xffff), HEX).c_str());
+  Serial.print("clientId: "); Serial.println(clientId);
 
   /*
    * rcswitch
@@ -133,7 +135,7 @@ void setup() {
   // Optional set protocol (default is 1, will work for most outlets)
   // mySwitch.setProtocol(2);
   // Optional set number of transmission repetitions.
-  mySwitch.setRepeatTransmit(15);
+  mySwitch.setRepeatTransmit(10);
 
   /*
    * wifi
@@ -192,17 +194,18 @@ void loop() {
   // handle client connections
   if (WiFi.status() == WL_CONNECTED) {
     if (!client.connected()) {
-      if (client.connect("ESP8266: PowerSwitch")) {
-        client.publish("outTopic", "hello world");
-        // Switch 00001
-        client.subscribe("PowerSwitch1A");
-        Serial.println("Subscribe 1A");
-        client.subscribe("PowerSwitch1B");
-        Serial.println("Subscribe 1B");
-        client.subscribe("PowerSwitch1C");
-        Serial.println("Subscribe 1C");
-        client.subscribe("PowerSwitch1D");
-        Serial.println("Subscribe 1D");
+      Serial.print("reconnecting clientId: ");
+      Serial.println(clientId);
+      if (client.connect(clientId)) {
+        // // Switch 00001
+        // client.subscribe("PowerSwitch1A");
+        // Serial.println("Subscribe 1A");
+        // client.subscribe("PowerSwitch1B");
+        // Serial.println("Subscribe 1B");
+        // client.subscribe("PowerSwitch1C");
+        // Serial.println("Subscribe 1C");
+        // client.subscribe("PowerSwitch1D");
+        // Serial.println("Subscribe 1D");
         // Switch 00010
         client.subscribe("PowerSwitch2A");
         Serial.println("Subscribe 2A");
